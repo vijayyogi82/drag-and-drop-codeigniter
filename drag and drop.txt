@@ -1,1 +1,110 @@
+// controller ************
+public function update_order()
+    {
+        $request = \Config\Services::request();
+        $process_no = $request->getPost('process_no');
 
+        if (!empty($process_no)) {
+            foreach ($process_no as $item) {
+                $this->db->table('process')->where('id', $item['id'])
+                          ->update(['process_no' => $item['process_no']]);
+            }
+            echo json_encode(['status' => 'success']);
+        } else {
+            echo json_encode(['status' => 'error']);
+        }
+    }
+
+
+
+
+// javascript and ajax********
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dragula/3.6.6/dragula.min.js" ></script>
+<script>
+    var container = document.getElementById('container');
+    var sortableTable = dragula([container]);
+
+    sortableTable.on('drop', function(el, target, source, sibling) {
+        var process_no = [];
+        Array.from(container.children).forEach(function(element, index) {
+            process_no.push({
+                id: element.getAttribute('data-id'),
+                process_no: index + 1
+            });
+        });
+
+        $.ajax({
+            url: '<?= base_url("process2/update_order") ?>', 
+            type: 'POST',
+            data: {process_no: process_no},
+            success: function(response) {
+                console.log('Order updated');
+                console.log(response);
+            },
+            error: function() {
+                alert('Error updating order. Please try again.');
+            }
+        });
+    });
+</script>
+
+
+
+// datatable  ***********
+<div class="table-responsive">
+                                <table class="table table-bordered border-bottom table-striped table-hover list-unstyled" id="page_list" data-ordering="false">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Company Name</th>
+                                            <th>Stage</th>
+                                            <th>Process</th>
+                                            <th>Process NO.</th>
+                                            <th>ACTIONS</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="container">
+                                        <?php 
+                                            if(isset($process) && count($process) > 0){
+                                                $i = 1;
+                                                foreach ($process as $proces) {
+                                         ?>
+                                                <tr  data-id="<?= $proces['id'] ?>">
+                                                    <td scope="row"><?=$i?></td>
+                                                    <td><?=$proces['company_name']?></td>
+                                                    <td><?=$proces['stage']?></td>
+                                                    <td><?=$proces['process']?></td>
+                                                    <td><?=$proces['process_no']?></td>
+                                                    <td>
+                                                        <a href="<?=base_url('process/edit/'.$proces['id'])?>" class="btn ripple btn-info btn-sm"><i class="fe fe-check-square"></i> Edit</a>&nbsp;&nbsp;
+                                                        <a href="<?=base_url('process/delete/'.$proces['id'])?>" class="btn ripple btn-danger btn-sm" onclick="return confirm('Are you sure?')"><i class="fe fe-trash-2"></i> Delete</a>
+                                                    </td>
+                                                </tr>
+                                         <?php
+                                                $i++;
+                                                }
+
+                                            }
+                                        ?>
+                                    </tbody>
+                                </table>
+                            </div>
+
+
+
+// model ****************
+    public function getprocess($id = false)
+    {
+        $db = \Config\Database::connect();
+
+        $sql = "SELECT p.*, o.org_name AS company_name
+                FROM process AS p 
+                LEFT JOIN org AS o ON p.company_id = o.id 
+                WHERE p.is_deleted = 0
+                ORDER BY p.process_no ASC";
+
+        $query = $db->query($sql);
+        $result = $query->getResultArray();
+
+        return $result;
+    }
